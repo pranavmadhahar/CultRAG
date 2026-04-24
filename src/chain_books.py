@@ -18,11 +18,16 @@ from langchain_core.prompts import ChatPromptTemplate
 # Embeddings + Vectorstore
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
+from utils.paths import DATA_DIR
 
 
 # Step 1: Load persisted FAISS index (built once in build/books_build.py)
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-vectorstore = FAISS.load_local("../data/faiss_books_index", embeddings, allow_dangerous_deserialization=True)
+vectorstore = FAISS.load_local(
+    str(DATA_DIR / "faiss_books_index"),
+    embeddings,
+    allow_dangerous_deserialization=True
+)
 retriever = vectorstore.as_retriever()
 
 # Step 2: LLM → define the language model

@@ -20,9 +20,9 @@ model = "gpt-4o-mini"
 import sys, os
 sys.path.append(os.path.abspath(".."))
 
-from src.chain_books import chain_books
-from src.chain_movies import chain_movies
-from src.chain_songs import chain_songs
+from chain_books import chain_books
+from chain_movies import chain_movies
+from chain_songs import chain_songs
 
 # --- Step 3: Core Imports ---
 from langchain_openai import ChatOpenAI

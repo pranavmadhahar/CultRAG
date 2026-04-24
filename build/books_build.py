@@ -9,15 +9,16 @@ import pandas as pd
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
+from src.utils.paths import DATA_DIR
 
 
 def build_books_index():
     # --- PREPROCESS DATA ---
-    books = pd.read_csv("../data/goodbooks-10k/books.csv")
-    book_tags = pd.read_csv("../data/goodbooks-10k/book_tags.csv")
-    tags = pd.read_csv("../data/goodbooks-10k/tags.csv")
-    ratings_books = pd.read_csv("../data/goodbooks-10k/ratings.csv")
-    to_read = pd.read_csv("../data/goodbooks-10k/to_read.csv")
+    books = pd.read_csv(DATA_DIR / "goodbooks-10k" / "books.csv")
+    book_tags = pd.read_csv(DATA_DIR / "goodbooks-10k" / "book_tags.csv")
+    tags = pd.read_csv(DATA_DIR / "goodbooks-10k" / "tags.csv")
+    ratings_books = pd.read_csv(DATA_DIR / "goodbooks-10k" / "ratings.csv")
+    to_read = pd.read_csv(DATA_DIR / "goodbooks-10k" / "to_read.csv")
 
     # Step 1: Join book_tags with tags → enrich with tag names
     book_tags_named = book_tags.merge(tags, on="tag_id")

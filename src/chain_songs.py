@@ -18,11 +18,12 @@ from langchain_core.prompts import ChatPromptTemplate
 # Embeddings + Vectorstore
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
+from utils.paths import DATA_DIR
 
 # Step 1: Load persisted FAISS index (built once in build/songs_build.py)
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 vectorstore = FAISS.load_local(
-    "../data/faiss_songs_index",
+    str(DATA_DIR / "faiss_songs_index"),
     embeddings,
     allow_dangerous_deserialization=True
 )
