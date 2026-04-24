@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cultrag"
+version = "0.1.0"
+description = "LCEL-based modular RAG system (Books, Movies, Songs)"
+authors = [{ name = "Your Name" }]
+requires-python = ">=3.9"
+
+dependencies = [
+    "langchain",
+    "langchain-openai",
+    "python-dotenv"
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
