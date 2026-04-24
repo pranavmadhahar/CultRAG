@@ -1,101 +1,44 @@
+"""
+chain_books.py
+----------------
+Core LangChain module for BooksRAG.
 
-# PREPROCESS DATA
-import pandas as pd
+Responsibilities:
+- Load the persisted FAISS index built by books_build.py
+- Define a retrieval-augmented generation (RAG) chain for book queries
+- Designed for integration into the CultRAG pipeline
+"""
 
-# Load core files
-books = pd.read_csv("data/goodbooks-10k/books.csv")
-book_tags = pd.read_csv("data/goodbooks-10k/book_tags.csv")
-tags = pd.read_csv("data/goodbooks-10k/tags.csv")
-ratings_books = pd.read_csv("data/goodbooks-10k/ratings.csv")
-to_read = pd.read_csv("data/goodbooks-10k/to_read.csv")
+# --- BUSINESS LOGIC ---
 
-# Step 1: Join book_tags with tags to get tag names
-book_tags_named = book_tags.merge(tags, on="tag_id")
-
-# Step 2: Merge with books using goodreads_book_id
-books_enriched = books.merge(book_tags_named, on="goodreads_book_id", how="left")
-
-# Step 3: Compute average rating per book_id
-avg_ratings = ratings_books.groupby("book_id")["rating"].mean().reset_index()
-
-# Step 4: Merge ratings into enriched books
-books_enriched = books_enriched.merge(avg_ratings, on="book_id", how="left")
-
-# Step 5: Compute how many user marked each book as to-read
-to_read_count = to_read.groupby("book_id").size().reset_index(name="to_read_count")
-
-# Step 6: Merge read_count into enriched books
-books_enriched = books_enriched.merge(to_read_count, on="book_id", how="left")
-
-# Optional: clean up NaN values
-books_enriched["rating"] = books_enriched["rating"].fillna("No rating")
-books_enriched["tag_name"] = books_enriched["tag_name"].fillna("No tags")
-
-# Group tags into a list per book
-books_grouped = books_enriched.groupby(
-    ["book_id", "title", "authors", "original_publication_year", "rating", "to_read_count"]
-)["tag_name"].apply(list).reset_index()
-
-
-# BUSINESS LOGIC
-
-# --- Imports ---
 # Core LangChain modules
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.documents import Document
 
 # Embeddings + Vectorstore
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-# from langchain_community.embeddings import HuggingFaceEmbeddings
-
 
 # Display helpers for Jupyter
 from IPython.display import display, Markdown
 
 
-# --- 1. Convert DataFrame rows into Documents ---
-# Each movie row becomes a text chunk for retrieval
-book_docs = []
-for _, row in books_grouped.iterrows():
-    text = f"""
-    Book: {row['title']}
-    Authors: {row['authors']}
-    Publication Year: {row['original_publication_year']}
-    Rating: {row['rating']:.2f}
-    Reading Count: {row['to_read_count']}
-    Genres: {', '.join(row['tag_name'])}
-    """
-    book_docs.append(Document(page_content=text.strip()))
-
-# ✅ At this point, movie_docs is a list of LangChain Document objects,
-# each containing one movie’s metadata in clean text form.
-
-
-# --- 2. Embeddings ---
-# Convert text chunks into dense vectors using HuggingFace
+# Step 1: Load persisted FAISS index (built once in build/books_build.py)
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-
-# --- 3. Vectorstore ---
-# Store embeddings in FAISS for efficient similarity search
-vectorstore = FAISS.from_documents(book_docs, embeddings)
-
-# --- 4. Retriever ---
-# Retriever is the interface to query FAISS
+vectorstore = FAISS.load_local("../data/faiss_books_index", embeddings, allow_dangerous_deserialization=True)
 retriever = vectorstore.as_retriever()
 
-
-# --- 5. LLM ---
-# Define the language model (OpenAI in this case)
+# Step 2: LLM → define the language model
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
-# --- 6. Prompt Template ---
-# Instructions for how the assistant should answer
+# Step 3: Prompt Template → instructions for how the assistant should answer
 prompt = ChatPromptTemplate.from_template("""
 You are a retrieval‑augmented assistant (RAG). 
 Use ONLY the provided context to answer the question. 
 If the answer is not in the context, say "Not found in the catalog."
+
+Conversation so far:
+{history}
 
 Context:
 {context}
@@ -113,16 +56,24 @@ Answer:
 """)
 
 
-# --- 7. LCEL Retrieval Chain ---
-# Helper to format retrieved docs into a single string
-def format_docs(docs): 
+# Step 4: Helper to format retrieved docs into a single string
+def format_docs(docs):
+    """
+    Convert a list of LangChain Document objects into a single string.
+    Each document’s page_content is joined with double newlines.
+    Used to feed retrieved context into the prompt.
+    """
     return "\n\n".join([d.page_content for d in docs])
 
-# Build the chain: Retriever → Prompt → LLM
+
+# Step 5: Build the Core LCEL Retrieval Chain
 chain_books = (
     {
-        "context": lambda x: format_docs(retriever.invoke(x["question"])),
-        "question": lambda x: x["question"]
+        "context": lambda x: (
+            print("Retriever invoked with:", x["question"]) or retriever.invoke(x["question"])
+        ),
+        "question": lambda x: x["question"],
+        "history": lambda x: x.get("history", "")
     }
     | prompt
     | llm
