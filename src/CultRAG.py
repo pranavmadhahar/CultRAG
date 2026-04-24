@@ -1,137 +1,123 @@
 """
-CultRAG.py (Core Orchestration)
--------------------------------
-This module orchestrates the CultRAG pipeline:
-- Loads domain chains (Books, Movies, Songs) from ../src/
-- Defines an LLM-based router_chain that rewrites queries with context
-- Dispatches to the correct domain chain using RunnableBranch
-- Wraps cult_chain_core with RunnableWithMessageHistory for multi‑turn context
-- Adds summarization of history when it grows too long
-- Uses modern LCEL (LangChain Expression Language) operators for clarity and maintainability
+CultRAG.py (Clean LCEL Orchestration - FIXED + STABLE)
+
+Fixes:
+- Proper input normalization (list → dict)
+- PromptTemplate always receives mapping type
+- Memory-safe LCEL pipeline
+- Rule-based routing
+- JSON router output
+- Fully LCEL-native
 """
 
-# --- Step 1: Environment Setup ---
+# --- Step 1: Environment ---
 from dotenv import load_dotenv, find_dotenv
-load_dotenv(find_dotenv())   # Load API keys from .env
+load_dotenv(find_dotenv())
 
 model = "gpt-4o-mini"
 
-# --- Step 2: Import Domain Chains ---
+# --- Step 2: Domain Chains ---
 import sys, os
-sys.path.append(os.path.abspath(".."))  # go up one level from notebooks/
+sys.path.append(os.path.abspath(".."))
 
 from src.chain_books import chain_books
 from src.chain_movies import chain_movies
 from src.chain_songs import chain_songs
 
-# --- Step 3: Core LangChain Imports ---
+# --- Step 3: Core Imports ---
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnableBranch, RunnableSequence, RunnableLambda
+from langchain_core.runnables import RunnableBranch, RunnableLambda
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.chat_history import InMemoryChatMessageHistory
 
-# --- Step 4: Define Base LLM ---
+# --- Step 4: LLM ---
 llm = ChatOpenAI(model=model, temperature=0.0)
 
-# --- Step 5: Default Fallback Chain ---
-default_prompt = PromptTemplate(
-    template="{question}",
-    input_variables=["question"]
-)
-default_chain = default_prompt | llm
+# =========================================================
+# INPUT NORMALIZATION (CRITICAL)
+# =========================================================
+def normalize_input(x):
+    """
+    Handles BOTH:
+    1. list[BaseMessage] from memory wrapper
+    2. dict from direct invocation
+    """
 
-# --- Step 6: LLM Router Prompt ---
+    # Case 1: memory gives message list
+    if isinstance(x, list):
+        return {
+            "question": x[-1].content,
+            "history": "\n".join(m.content for m in x[:-1])
+        }
+
+    # Case 2: normal dict input
+    return {
+        "question": x.get("question", ""),
+        "history": x.get("history", "")
+    }
+
+input_mapper = RunnableLambda(normalize_input)
+
+# --- Step 5: Router Prompt (JSON output) ---
 router_prompt = PromptTemplate(
     template="""
-You are a router. Based on the conversation history and the latest user input,
-decide whether the query needs rewriting.
+You are a query rewriting system.
 
-Conversation so far:
+Conversation history:
 {history}
 
-User input:
+User question:
 {question}
 
-Instructions:
-- If the input is already clear and self-contained, keep it unchanged.
-- If the input is vague or depends on prior context, rewrite it into a self-contained query.
-- Always output both keys: "question" (rewritten or unchanged) and "history" (unchanged).
+Task:
+- Rewrite question only if needed to make it self-contained
+- If already clear, return unchanged
+- Output ONLY valid JSON
 
-Output a JSON object with:
-- question: the final query (rewritten or unchanged)
-- history: the conversation history (unchanged)
+Return format:
+{{
+  "question": "final rewritten question"
+}}
 """,
     input_variables=["history", "question"]
 )
 
+# --- Step 6: Parser ---
 parser = JsonOutputParser()
+
 router_chain = router_prompt | llm | parser
 
-# --- Step 7: Router Dispatch ---
-# --- Step 7: Router Dispatch with Debug ---
-# --- Step 7: Router Dispatch with Debug ---
+# --- Step 7: Default Chain ---
+default_chain = (
+    RunnableLambda(lambda x: x["question"])
+    | llm
+)
 
-# --- Step 7: Router Dispatch with Debug ---
-# --- Step 7: Router Dispatch with Debug ---
+# --- Step 8: Rule-based Router ---
 router = RunnableBranch(
-    (
-        lambda x: "book" in x["question"].lower(),
-        RunnableLambda(lambda y: (print("Dispatch → Books") or chain_books.invoke(y)))
-    ),
-    (
-        lambda x: "movie" in x["question"].lower(),
-        RunnableLambda(lambda y: (print("Dispatch → Movies") or chain_movies.invoke(y)))
-    ),
-    (
-        lambda x: "song" in x["question"].lower() or "music" in x["question"].lower(),
-        RunnableLambda(lambda y: (print("Dispatch → Songs") or chain_songs.invoke(y)))
-    ),
-    # Default branch: just a runnable, not a tuple
-    RunnableLambda(lambda y: (print("Dispatch → Default") or default_chain.invoke(y)))
+    (lambda x: "book" in x["question"].lower(), chain_books),
+    (lambda x: "movie" in x["question"].lower(), chain_movies),
+    (lambda x: "song" in x["question"].lower() or "music" in x["question"].lower(), chain_songs),
+    default_chain
 )
 
+# --- Step 9: CORE PIPELINE (FIXED ORDER) ---
+cult_chain_core = input_mapper | router_chain | router
 
+# --- Step 10: Memory Store ---
+store = {}
 
-# --- Step 8: CultRAG Core Pipeline ---
-cult_chain_core = RunnableSequence(
-    {"question": lambda x: x["input"], "history": lambda x: x["history"]},
-    router_chain,
-    RunnableLambda(lambda x: (print("Router output:", x), x)[1]),  # debug
-    router
-)
+def get_session_history(session_id: str):
+    if session_id not in store:
+        store[session_id] = InMemoryChatMessageHistory()
+    return store[session_id]
 
-# --- Step 9: Summarizer Chain ---
-summary_prompt = PromptTemplate(
-    template="Summarize the following conversation briefly:\n\n{messages}",
-    input_variables=["messages"]
-)
-summarizer_chain = summary_prompt | llm
-
-def summarize_history(messages, max_len=5):
-    # Keep only human messages (user inputs)
-    user_msgs = [m.content for m in messages if m.type == "human"]
-
-    if len(user_msgs) > max_len:
-        summary = summarizer_chain.invoke({"messages": "\n".join(user_msgs)})
-        return summary.content
-
-    return "\n".join(user_msgs)
-
-
-# --- Step 10: Wrap cult_chain_core with RunnableWithMessageHistory ---
-shared_history = InMemoryChatMessageHistory()
-
+# --- Step 11: FINAL CHAIN ---
 cult_chain = RunnableWithMessageHistory(
-    runnable=RunnableLambda(
-        lambda inputs: cult_chain_core.invoke({
-            "input": inputs[-1].content,  # last message content
-            "history": summarize_history(shared_history.messages)
-        })
-    ),
-    get_session_history=lambda _: shared_history,
-    input_key="input",
+    runnable=cult_chain_core,
+    get_session_history=get_session_history,
+    input_key="question",
     history_key="history"
 )
-

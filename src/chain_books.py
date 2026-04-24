@@ -19,9 +19,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
-# Display helpers for Jupyter
-from IPython.display import display, Markdown
-
 
 # Step 1: Load persisted FAISS index (built once in build/books_build.py)
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
