@@ -96,13 +96,12 @@ CultRAG/
 Follow these steps to install and run the project locally:
 
 1. **Clone the repository**
-   ```bash
+```bash
    git clone https://github.com/your-username/CultRAG.git
    cd CultRAG
 ```
 
-2. Create a virtual environment (recommended)
-
+2. **Create a virtual environment** (recommended)
 ```bash
 python -m venv .venv
 source .venv/bin/activate   # Linux/Mac
