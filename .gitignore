@@ -10,3 +10,7 @@ data/
 # Ignore environment files
 .env
 
+data/
+*.faiss
+*.pkl
+.env
