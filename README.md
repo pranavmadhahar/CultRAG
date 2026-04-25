@@ -12,269 +12,205 @@ It features:
 - A **shared memory-enabled chat system**
 - A **fully LCEL-native architecture (future-proof design)**
 
----
-
-# System Overview
-
-CultRAG is designed as a **multi-domain retrieval + reasoning system** where a single user interface dynamically routes queries to specialized RAG pipelines.
+This project is part of my journey into IT and AI development. It is not a production system, but a **portfolio project** to demonstrate learning, experimentation, and practical application of concepts.
 
 ---
 
-## High-Level Architecture
+## Project Overview
+
+CultRAG is designed to:
+- Load structured datasets (books, movies, songs)
+- Convert them into searchable vector indexes using **FAISS**
+- Use **LangChain Core (LCEL)** to build modular RAG pipelines
+- Route user queries to the correct domain (books, movies, or songs)
+- Provide answers using a Large Language Model (LLM)
+
+The goal is to understand how modular RAG systems work and to practice building a project that feels professional but is still approachable for a beginner.
+
+---
+
+## Architecture (Simplified)
 
 ```mermaid
 flowchart TD
-    A[User Query] --> B[CultRAG Router Chain]
+    A[User Query] --> B[Router]
+    B -->|Books| C[BooksRAG]
+    B -->|Movies| D[MoviesRAG]
+    B -->|Songs| E[SongsRAG]
+    B -->|Default| F[LLM Fallback]
 
-    B --> C{Rule-Based Routing}
+    C --> G[FAISS Books Index]
+    D --> H[FAISS Movies Index]
+    E --> I[FAISS Songs Index]
 
-    C -->|Books| D[BooksRAG Chain]
-    C -->|Movies| E[MoviesRAG Chain]
-    C -->|Songs| F[SongsRAG Chain]
-    C -->|Default| G[LLM Fallback]
+    G --> J[LLM Response]
+    H --> J
+    I --> J
+    F --> J
 
-    D --> H[FAISS Books Index]
-    E --> I[FAISS Movies Index]
-    F --> J[FAISS Songs Index]
-
-    H --> K[LLM Response Generation]
-    I --> K
-    J --> K
-    G --> K
-
-    K --> L[Final Answer]
+    J --> K[Final Answer]
 ```
----
 
-## CultRAG Orchestration Flow
-
-```mermaid
-flowchart LR
-    A[User Input] --> B[Input Normalization]
-    B --> C[Router LLM (Query Rewrite)]
-    C --> D[Rule-Based Routing]
-
-    D --> E1[Books Chain]
-    D --> E2[Movies Chain]
-    D --> E3[Songs Chain]
-
-    E1 --> F[LLM Response]
-    E2 --> F
-    E3 --> F
-```
 ---
 
 ## Project Structure
-
+```bash
 CultRAG/
 │
-├── build/                          # Data preprocessing scripts
-│   ├── books_build.py
-│   ├── movies_build.py
-│   └── songs_build.py
-│
-├── data/                           # Raw + vector indexes
-│   ├── faiss_books_index/
-│   ├── faiss_movies_index/
-│   ├── faiss_songs_index/
-│   ├── goodbooks-10k/
-│   ├── ml-100k/
-│   └── fma-small/
-│
-├── notebooks/                      # Standalone RAG experiments
-│   ├── BooksRAG.ipynb
-│   ├── MoviesRAG.ipynb
-│   ├── SongsRAG.ipynb
-│   └── CultRAG.ipynb
-│
-├── src/                            # Core LCEL system
-│   ├── chain_books.py
-│   ├── chain_movies.py
-│   ├── chain_songs.py
-│   ├── CultRAG.py
-│   └── __init__.py
-│
-├── pyproject.toml
+├── build/          # Scripts to preprocess data and build FAISS indexes
+├── data/           # Datasets + saved vector indexes
+├── notebooks/      # Jupyter notebooks for experiments
+├── src/            # Core RAG chains and orchestration
 ├── requirements.txt
-└── Chat.ipynb                     # Notebook UI (ipywidgets chat)
-
----
-
-## Domain RAG Pipelines
-
-CultRAG is built on three independent LCEL-based RAG systems:
-
-### BooksRAG
-    - Dataset: GoodBooks-10K
-    - Focus: book metadata, ratings, authors, genres
-    - Output: structured book recommendations
-### MoviesRAG
-    - Dataset: MovieLens-100K
-    - Focus: movies, ratings, genres
-    - Output: ranked movie tables + summaries
-### SongsRAG
-    - Dataset: FMA Small
-    - Focus: music metadata
-    - Output: song recommendations
-
-Each pipeline is:
-
-- Fully standalone
-- FAISS-based retrieval system
-- LCEL-native chain (context → prompt → LLM)
+└── README.md
+```
 
 ---
 
 ## Tech Stack
-### Core Framework
-    - LangChain Core (LCEL)
-    - LangChain OpenAI
-    - LangChain Community
-### Retrieval
-    - FAISS (vector search)
-    - HuggingFace Embeddings (all-MiniLM-L6-v2)
-### LLM
-    - OpenAI GPT-4o-mini
-### Data Processing
-    - Pandas
-    - Python ETL pipelines
-### UI Layer
-    - ipywidgets (Notebook Chat UI)
-    - IPython display tools
+
+   - LangChain Core (LCEL) — modular RAG pipelines
+
+   - FAISS — vector search
+
+   - HuggingFace Embeddings — text embeddings
+
+   - OpenAI GPT-4o-mini — language model
+
+   - Python + Pandas — data handling
+
+   - Jupyter Notebooks — experimentation and UI
 
 ---
 
-## Key Features
-   1. LCEL-Native Architecture
+## Installation & Setup
 
-Fully composable pipelines using LangChain Expression Language.
+Follow these steps to install and run the project locally:
 
-   2. Intelligent Routing System
-Rule-based routing (fast + deterministic)
-LLM-based query rewriting (context-aware)
-
-   3. Shared Memory System
-Multi-turn conversation support
-Session-based chat history
-
-   4. Modular Design
-
-Each domain is:
-
-- independent
-- reusable
-- testable in isolation
-
----
-
-## CultRAG Core Design
-
-```mermaid
-flowchart TD
-    A[User Input] --> B[normalize_input()]
-    B --> C[router_chain (LLM rewrite)]
-    C --> D[rule-based router]
-
-    D --> E1[chain_books]
-    D --> E2[chain_movies]
-    D --> E3[chain_songs]
-
-    E1 --> F[LLM Response]
-    E2 --> F
-    E3 --> F
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-username/CultRAG.git
+   cd CultRAG
 ```
 
----
+2. Create a virtual environment (recommended)
 
-## Data Sources
-### Books
-    - GoodBooks-10K dataset
-    - Metadata: ratings, authors, popularity
-### Movies
-    - MovieLens 100K dataset
-    - Metadata: genres, ratings, timestamps
-### Songs
-    - FMA (Free Music Archive) Small dataset
-    - Metadata: audio features + tags
-
-
-## Key Engineering Challenges
-1. Messy Real-World Data
-   - inconsistent metadata formats
-   - missing values
-   - noisy genre encoding
-2. Schema Normalization
-
-   - Unified all datasets into a single document format for embeddings.
-
-3. Routing Ambiguity
-
-   Handled queries like:
-
-“romantic movie like a book”
-
-Solved using hybrid rule-based routing + fallback logic.
-
-4. LCEL Input Compatibility
-
-Handled:
-
-- dict inputs
-- message-list inputs (memory wrapper)
-
-5. ⚡ FAISS Serialization
-
-Required safe loading:
 ```bash
-allow_dangerous_deserialization=True
+python -m venv .venv
+source .venv/bin/activate   # Linux/Mac
+.venv\Scripts\activate      # Windows
 ```
+
+3. Install dependencies
+```bash
+pip install -e .
+```
+The -e flag installs the project in editable mode, so changes to the source code are reflected immediately.
+
+4. Set up environment variables
+
+   - Create a .env file in the project root.
+
+   - Add your API keys (e.g., OpenAI key).
+
+   - Example
+
+     OPENAI_API_KEY=your_api_key_here
 
 ---
 
-## Why CultRAG is Future-Proof
-   - Built on LangChain Core (LCEL) (latest standard)
-   - Fully composable pipeline design
-   - No deprecated chain APIs
-   - Easy to extend (new domains plug-in ready)
-   - Compatible with LangGraph evolution path
+## How to Run
+
+You can run the project either through notebooks or directly in Python.
+
+### Option 1: Jupyter Notebook
+
+Open notebooks/CultRAG.ipynb and run the cells to interact with the system in a chat interface.
+
+### Option 2: Python Script
+
+Run queries directly in Python:
+```bash
+from CultRAG import cult_chain
+
+# Example 1: Book query
+response = cult_chain.invoke(
+    "list top romance books",
+    config={"configurable": {"session_id": "user_1"}}
+)
+print(response.content)
+
+# Example 2: Movie query
+response = cult_chain.invoke(
+    "List movies in same genre",
+    config={"configurable": {"session_id": "user_1"}}
+)
+print(response.content)
+```
+---
+
+## Learning Goals
+
+   - Through CultRAG I am practicing:
+
+   - Working with real-world datasets (books, movies, songs)
+
+   - Building vector indexes and understanding embeddings
+
+   - Designing modular pipelines with LangChain Core
+
+   - Using a router to direct queries to the right domain
+
+   - Managing project structure in a professional way
 
 ---
 
 ## Future Improvements
-   1. Semantic Router
 
-Replace keyword routing with embedding similarity.
+  - Add semantic routing (using embeddings instead of keywords)
 
-   2. Streaming UI
+  - Improve the notebook UI with streaming responses
 
-Token streaming in ipywidgets chat interface.
+  - Extend to new domains (e.g., podcasts, articles)
 
-   3. LangGraph Migration
-
-Convert routing into a state graph.
-
-   4. Hybrid Retrieval
-
----
-
-## Example Usage
-```bash
-response = cult_chain.invoke(
-    "recommend top romance movies",
-    config={"configurable": {"session_id": "user_1"}}
-)
-
-print(response.content)
-```
+  - Explore LangGraph for state-based orchestration
 
 ---
 
 ## Summary
 
-CultRAG is a:
+   - CultRAG is a portfolio project created to learn and demonstrate:
 
-Multi-domain, LCEL-native, retrieval-augmented conversational system
-combining structured datasets + FAISS retrieval + LLM reasoning + intelligent routing
+   - How RAG systems work
+
+   - How to structure projects professionally
+
+   - How to combine datasets, embeddings, FAISS, and LLMs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
