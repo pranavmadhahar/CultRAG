@@ -67,6 +67,14 @@ CultRAG/
 
 ---
 
+## Datasets
+
+- GoodBooks-10K: https://github.com/zygmuntz/goodbooks-10k
+- MovieLens-100K: https://grouplens.org/datasets/movielens/100k/
+- FMA Small: https://github.com/mdeff/fma
+
+---
+
 ## Tech Stack
 
    - LangChain Core (LCEL) — modular RAG pipelines
