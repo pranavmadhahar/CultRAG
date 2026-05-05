@@ -34,9 +34,11 @@ retriever = vectorstore.as_retriever()
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 # Step 3: Prompt Template → instructions for how the assistant should answer
-prompt = ChatPromptTemplate.from_template("""
-You are a retrieval‑augmented assistant (RAG). 
-Use ONLY the provided context to answer the question. 
+
+prompt_books = ChatPromptTemplate.from_template("""
+You are a book recommendation assistant using retrieval-augmented generation (RAG).
+
+Use ONLY the provided context to answer the question.
 If the answer is not in the context, say "Not found in the catalog."
 
 Conversation so far:
@@ -49,8 +51,12 @@ Question:
 {question}
 
 Rules:
+- ONLY include BOOKS in your answer.
+- DO NOT include movies, songs, or any other media, even if present in the context.
+- Ignore any non-book entries in the context completely.
 - Do NOT add items that are not in the context.
 - Do NOT guess or hallucinate.
+- Do NOT mention other domains (movies, songs) or their absence.
 - Output a valid markdown table with headers.
 - Include a short summary after the table.
 
@@ -71,12 +77,10 @@ def format_docs(docs):
 # Step 5: Build the Core LCEL Retrieval Chain
 chain_books = (
     {
-        "context": lambda x: (
-            print("Retriever invoked with:", x["question"]) or retriever.invoke(x["question"])
-        ),
+        "context": lambda x: retriever.invoke(x["question"]),
         "question": lambda x: x["question"],
         "history": lambda x: x.get("history", "")
     }
-    | prompt
+    | prompt_books
     | llm
 )

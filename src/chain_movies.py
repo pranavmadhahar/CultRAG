@@ -33,9 +33,10 @@ retriever = vectorstore.as_retriever()
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 # Step 3: Prompt Template → instructions for how the assistant should answer
-prompt = ChatPromptTemplate.from_template("""
-You are a retrieval‑augmented assistant (RAG). 
-Use ONLY the provided context to answer the question. 
+prompt_movies = ChatPromptTemplate.from_template("""
+You are a movie recommendation assistant using retrieval-augmented generation (RAG).
+
+Use ONLY the provided context to answer the question.
 If the answer is not in the context, say "Not found in the catalog."
 
 Conversation so far:
@@ -48,8 +49,12 @@ Question:
 {question}
 
 Rules:
+- ONLY include MOVIES in your answer.
+- DO NOT include books, songs, or any other media, even if present in the context.
+- Ignore any non-movie entries in the context completely.
 - Do NOT add items that are not in the context.
 - Do NOT guess or hallucinate.
+- Do NOT mention other domains (books, songs) or their absence.
 - Output a valid markdown table with headers.
 - Include a short summary after the table.
 
@@ -72,6 +77,6 @@ chain_movies = (
         "question": lambda x: x["question"],
         "history": lambda x: x.get("history", "")
     }
-    | prompt
+    | prompt_movies
     | llm
 )

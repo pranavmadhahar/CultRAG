@@ -96,12 +96,37 @@ default_chain = (
 )
 
 # --- Step 8: Rule-based Router ---
-router = RunnableBranch(
-    (lambda x: "book" in x["question"].lower(), chain_books),
-    (lambda x: "movie" in x["question"].lower(), chain_movies),
-    (lambda x: "song" in x["question"].lower() or "music" in x["question"].lower(), chain_songs),
-    default_chain
-)
+# router = RunnableBranch(
+#     (lambda x: "book" in x["question"].lower(), chain_books),
+#     (lambda x: "movie" in x["question"].lower(), chain_movies),
+#     (lambda x: "song" in x["question"].lower() or "music" in x["question"].lower(), chain_songs),
+#     default_chain
+# )
+
+def multi_route(x):
+    q = x["question"].lower()
+    results = []
+
+    if "book" in q:
+        res = chain_books.invoke(x)
+        results.append(res.content)
+
+    if "movie" in q:
+        res = chain_movies.invoke(x)
+        results.append(res.content)
+
+
+    if "song" in q or "music" in q:
+        res = chain_songs.invoke(x)
+        results.append(res.content)
+
+    # fallback
+    if not results:
+        return default_chain.invoke(x).content
+
+    return "\n\n".join(results)
+
+router = RunnableLambda(multi_route)
 
 # --- Step 9: CORE PIPELINE (FIXED ORDER) ---
 cult_chain_core = input_mapper | router_chain | router
