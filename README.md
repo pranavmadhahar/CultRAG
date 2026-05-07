@@ -1,225 +1,357 @@
 # CultRAG — Modular Multi-Domain Retrieval-Augmented Generation System
 
-CultRAG is a **LangChain Core (LCEL)-based modular RAG system** that provides intelligent conversational access to three cultural domains:
+CultRAG is a modular multi-domain Retrieval-Augmented Generation (RAG) system built using LangChain Core (LCEL), FastAPI, FAISS, and OpenAI models.
 
-- Books (GoodBooks-10K)
-- Movies (MovieLens-100K)
-- Songs (FMA Small dataset)
+The system provides conversational and structured retrieval across multiple cultural domains:
 
-It features:
-- A **router-based orchestration layer**
-- Independent **domain-specific RAG pipelines**
-- A **shared memory-enabled chat system**
-- A **fully LCEL-native architecture (future-proof design)**
+* Books (GoodBooks-10K)
+* Movies (MovieLens-100K)
+* Songs (FMA Small Dataset)
 
-This project is part of my journey into IT and AI development. It is not a production system, but a **portfolio project** to demonstrate learning, experimentation, and practical application of concepts.
+CultRAG is designed as a portfolio and learning project focused on:
 
----
-
-## Project Overview
-
-CultRAG is designed to:
-- Load structured datasets (books, movies, songs)
-- Convert them into searchable vector indexes using **FAISS**
-- Use **LangChain Core (LCEL)** to build modular RAG pipelines
-- Route user queries to the correct domain (books, movies, or songs)
-- Provide answers using a Large Language Model (LLM)
-
-The goal is to understand how modular RAG systems work and to practice building a project that feels professional but is still approachable for a beginner.
+* Modular RAG architecture
+* Multi-domain orchestration
+* Structured JSON-first retrieval pipelines
+* Memory-enabled conversational querying
+* Deployment-ready backend engineering
 
 ---
 
-## Architecture (Simplified)
+# Features
+
+* Multi-domain RAG orchestration
+* Independent Books / Movies / Songs retrieval chains
+* FAISS vector search
+* Structured JSON retrieval outputs
+* Conversational narration layer
+* Session-based memory support
+* FastAPI backend service
+* Dockerized deployment support
+* Fully LCEL-native pipeline architecture
+
+---
+
+# Architecture Overview
+
+CultRAG follows a layered RAG architecture:
 
 ```mermaid
 flowchart TD
-    A[User Query] --> B[Router]
-    B -->|Books| C[BooksRAG]
-    B -->|Movies| D[MoviesRAG]
-    B -->|Songs| E[SongsRAG]
-    B -->|Default| F[LLM Fallback]
+    A[User Query] --> B[Input Normalization]
 
-    C --> G[FAISS Books Index]
-    D --> H[FAISS Movies Index]
-    E --> I[FAISS Songs Index]
+    B --> C[Query Rewrite Layer]
 
-    G --> J[LLM Response]
-    H --> J
-    I --> J
-    F --> J
+    C --> D[Rule-Based Router]
 
-    J --> K[Final Answer]
+    D -->|Books| E[BooksRAG]
+    D -->|Movies| F[MoviesRAG]
+    D -->|Songs| G[SongsRAG]
+    D -->|Fallback| H[General LLM]
+
+    E --> I[Books FAISS Index]
+    F --> J[Movies FAISS Index]
+    G --> K[Songs FAISS Index]
+
+    I --> L[Structured JSON Output]
+    J --> L
+    K --> L
+    H --> L
+
+    L --> M[Narration Layer]
+
+    M --> N[Final Conversational Response]
 ```
 
 ---
 
-## Project Structure
+# Design Philosophy
+
+CultRAG is intentionally designed around a few core principles:
+
+* Keep retrieval deterministic
+* Minimize hallucinations using JSON-first outputs
+* Separate retrieval logic from narration logic
+* Use LLMs only where they add value
+* Keep domain pipelines modular and independently scalable
+* Build deployment-friendly architecture from the beginning
+
+---
+
+# Project Structure
+
 ```bash
 CultRAG/
 │
-├── build/          # Scripts to preprocess data and build FAISS indexes
-├── data/           # Datasets + saved vector indexes
-├── notebooks/      # Jupyter notebooks for experiments
-├── src/            # Core RAG chains and orchestration
+├── assets/
+│   ├── data/               # Raw datasets
+│   ├── cleaned_data/       # Preprocessed datasets
+│   └── vectorstores/       # FAISS vector indexes
+│
+├── backend/
+│   └── main.py             # FastAPI backend
+│
+├── notebooks/
+│   └── CultRAG.ipynb       # Experimental notebook interface
+│
+├── src/
+│   ├── chain_books.py
+│   ├── chain_movies.py
+│   ├── chain_songs.py
+│   ├── CultRAG.py
+│   └── utils/
+│
+├── Dockerfile
+├── .dockerignore
 ├── requirements.txt
+├── pyproject.toml
 └── README.md
 ```
 
 ---
 
-## Datasets
+# Retrieval Pipeline
 
-- GoodBooks-10K: https://github.com/zygmuntz/goodbooks-10k
-- MovieLens-100K: https://grouplens.org/datasets/movielens/100k/
-- FMA Small: https://github.com/mdeff/fma
+CultRAG uses a two-stage architecture:
+
+## Offline Build Pipeline
+
+```text
+Raw Datasets
+    ↓
+Cleaned Datasets
+    ↓
+Chunking + Embeddings
+    ↓
+FAISS Vectorstores
+```
+
+## Online Query Pipeline
+
+```text
+User Query
+    ↓
+Router
+    ↓
+Domain RAG Chains
+    ↓
+Structured JSON Retrieval
+    ↓
+Narration Layer
+    ↓
+Final Response
+```
 
 ---
 
-## Tech Stack
+# Datasets
 
-   - LangChain Core (LCEL) — modular RAG pipelines
+## Books
 
-   - FAISS — vector search
+GoodBooks-10K
+https://github.com/zygmuntz/goodbooks-10k
 
-   - HuggingFace Embeddings — text embeddings
+## Movies
 
-   - OpenAI GPT-4o-mini — language model
+MovieLens-100K
+https://grouplens.org/datasets/movielens/100k/
 
-   - Python + Pandas — data handling
+## Songs
 
-   - Jupyter Notebooks — experimentation and UI
-
----
-
-## Installation & Setup
-
-Follow these steps to install and run the project locally:
-
-1. **Clone the repository**
-```bash
-   git clone https://github.com/your-username/CultRAG.git
-   cd CultRAG
-```
-
-2. **Create a virtual environment** (recommended)
-```bash
-python -m venv .venv
-source .venv/bin/activate   # Linux/Mac
-.venv\Scripts\activate      # Windows
-```
-
-3. Install dependencies
-```bash
-pip install -e .
-```
-The -e flag installs the project in editable mode, so changes to the source code are reflected immediately.
-
-4. Set up environment variables
-
-   - Create a .env file in the project root.
-
-   - Add your API keys (e.g., OpenAI key).
-
-   - Example
-
-     OPENAI_API_KEY=your_api_key_here
+FMA Small Dataset
+https://github.com/mdeff/fma
 
 ---
 
-## How to Run
+# Tech Stack
 
-You can run the project either through notebooks or directly in Python.
+* LangChain Core (LCEL)
+* FastAPI
+* FAISS
+* Sentence Transformers
+* OpenAI GPT-4o-mini
+* HuggingFace Embeddings
+* Python
+* Pandas
+* Docker
+* Jupyter Notebook
 
-### Option 1: Jupyter Notebook
+---
 
-Open notebooks/CultRAG.ipynb and run the cells to interact with the system in a chat interface.
+# Installation
 
-### Option 2: Python Script
+## 1. Clone Repository
 
-Run queries directly in Python:
 ```bash
-from CultRAG import cult_chain
+git clone https://github.com/pranavmadhahar/CultRAG.git
+cd CultRAG
+```
 
-# Example 1: Book query
+---
+
+## 2. Create Virtual Environment
+
+```bash
+python -m venv myenv
+source myenv/bin/activate
+```
+
+Windows:
+
+```bash
+myenv\Scripts\activate
+```
+
+---
+
+## 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 4. Configure Environment Variables
+
+Create a `.env` file in the project root:
+
+```env
+OPENAI_API_KEY=your_openai_api_key
+```
+
+---
+
+# Running the Backend
+
+Start the FastAPI server:
+
+```bash
+uvicorn backend.main:app --reload
+```
+
+Backend will run at:
+
+```text
+http://127.0.0.1:8000
+```
+
+Swagger Docs:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+---
+
+# API Endpoints
+
+## `/chat`
+
+Returns narrated conversational responses.
+
+### Example Request
+
+```json
+{
+  "question": "recommend top 2 adventure books and movies",
+  "session_id": "user_1"
+}
+```
+
+---
+
+## `/structured`
+
+Returns structured JSON retrieval output directly from the RAG orchestration layer.
+
+### Example Request
+
+```json
+{
+  "question": "recommend top 2 adventure books and movies",
+  "session_id": "user_1"
+}
+```
+
+---
+
+# Docker Support
+
+## Build Docker Image
+
+```bash
+docker build -t cultrag .
+```
+
+---
+
+## Run Docker Container
+
+```bash
+docker run --env-file .env -p 8000:8000 cultrag
+```
+
+---
+
+# Example Usage (Python)
+
+```python
+from src.CultRAG import cult_chain
+
 response = cult_chain.invoke(
-    "list top romance books",
+    "recommend top adventure books",
     config={"configurable": {"session_id": "user_1"}}
 )
-print(response.content)
 
-# Example 2: Movie query
-response = cult_chain.invoke(
-    "List movies in same genre",
-    config={"configurable": {"session_id": "user_1"}}
-)
-print(response.content)
+print(response)
 ```
----
-
-## Learning Goals
-
-   - Through CultRAG I am practicing:
-
-   - Working with real-world datasets (books, movies, songs)
-
-   - Building vector indexes and understanding embeddings
-
-   - Designing modular pipelines with LangChain Core
-
-   - Using a router to direct queries to the right domain
-
-   - Managing project structure in a professional way
 
 ---
 
-## Future Improvements
+# Learning Goals
 
-  - Add semantic routing (using embeddings instead of keywords)
+This project was created to practice and understand:
 
-  - Improve the notebook UI with streaming responses
-
-  - Extend to new domains (e.g., podcasts, articles)
-
-  - Explore LangGraph for state-based orchestration
+* Modular RAG architecture
+* Retrieval pipelines
+* Vector databases and embeddings
+* Multi-domain orchestration
+* LangChain LCEL design patterns
+* FastAPI backend development
+* Dockerized AI deployment
+* Structured LLM pipelines
 
 ---
 
-## Summary
+# Future Improvements
 
-   - CultRAG is a portfolio project created to learn and demonstrate:
+* Semantic routing using embeddings
+* Streaming responses
+* Frontend UI integration
+* LangGraph orchestration
+* Hybrid search
+* Reranking pipelines
+* PostgreSQL / Redis memory backend
+* Cloud deployment
 
-   - How RAG systems work
+---
 
-   - How to structure projects professionally
+# Summary
 
-   - How to combine datasets, embeddings, FAISS, and LLMs
+CultRAG is a modular multi-domain RAG system built to explore:
 
+* Retrieval-Augmented Generation
+* Scalable orchestration design
+* Structured AI pipelines
+* Deployment-ready backend architecture
 
+The project combines:
 
+* Real-world datasets
+* Vector retrieval
+* LLM orchestration
+* Conversational interfaces
+* Containerized deployment
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+into a single learning-focused but professionally structured AI system.
