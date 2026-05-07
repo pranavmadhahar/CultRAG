@@ -18,7 +18,9 @@ from langchain_core.prompts import ChatPromptTemplate
 # Embeddings + Vectorstore
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
+from langchain_core.output_parsers import JsonOutputParser
 from utils.paths import VECTORSTORES_DIR
+
 
 # Step 1: Load persisted FAISS index (built once in build/movies_build.py)
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
@@ -33,13 +35,30 @@ retriever = vectorstore.as_retriever()
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 # Step 3: Prompt Template → instructions for how the assistant should answer
+
 prompt_movies = ChatPromptTemplate.from_template("""
 You are a movie recommendation assistant using retrieval-augmented generation (RAG).
 
-Use ONLY the provided context to answer the question.
-If the answer is not in the context, say "Not found in the catalog."
+You are given:
+- Conversation history
+- Retrieved movie context
+- A user question
 
-Conversation so far:
+Your task:
+Extract ONLY relevant movie information from the context and return structured results.
+
+IMPORTANT RULES:
+Rules:
+- Always set domain = "movies"
+- ONLY include MOVIES in your answer.
+- DO NOT include books, songs, or any other media, even if present in the context.
+- Ignore any non-movie entries in the context completely.
+- Do NOT add items that are not in the context.
+- Do NOT guess or hallucinate.
+- Do NOT mention other domains (books, songs) or their absence.
+- Include a short summary after the table.
+
+Conversation History:
 {history}
 
 Context:
@@ -48,17 +67,24 @@ Context:
 Question:
 {question}
 
-Rules:
-- ONLY include MOVIES in your answer.
-- DO NOT include books, songs, or any other media, even if present in the context.
-- Ignore any non-movie entries in the context completely.
-- Do NOT add items that are not in the context.
-- Do NOT guess or hallucinate.
-- Do NOT mention other domains (books, songs) or their absence.
-- Output a valid markdown table with headers.
-- Include a short summary after the table.
+OUTPUT FORMAT (STRICT JSON ONLY):
+{{
+  "domain": "movies",
+  "query_understanding": "brief interpretation of what user wants",
+  "results": [
+    {{
+      "title": "...",
+      "release_date": "...",
+      "avg_rating": "...",
+      "rating_count": "...",
+      "genres": "..."
+    }}
+  ],
+  "summary": "short explanation of the results in 1-2 lines"
+}}
 
-Answer:
+FINAL RULE:
+Return ONLY valid JSON. No markdown, no tables, no extra text, no extra formatting.
 """)
 
 # Step 4: Helper to format retrieved docs into a single string
@@ -70,6 +96,8 @@ def format_docs(docs):
     """
     return "\n\n".join([d.page_content for d in docs])
 
+parser = JsonOutputParser()
+
 # Step 5: Build the Core LCEL Retrieval Chain
 chain_movies = (
     {
@@ -79,4 +107,5 @@ chain_movies = (
     }
     | prompt_movies
     | llm
+    | parser
 )

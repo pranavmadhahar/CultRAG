@@ -29,58 +29,79 @@ def build_songs_index():
     # =========================================================
     # STEP 1: LOAD CLEANED DATASET
     # =========================================================
-    # We assume preprocessing has already:
-    # - resolved genres
-    # - normalized missing values
-    # - flattened metadata into clean columns
-
     songs = pd.read_csv("../cleaned_data/songs_clean.csv")
 
     # =========================================================
-    # STEP 2: CONVERT EACH SONG → NATURAL LANGUAGE DOCUMENT
+    # STEP 1.1: DATA CLEANING + SAFETY FILTERS (CRITICAL)
     # =========================================================
-    # Why?
-    # Embedding models perform best on semantic text, not tabular data.
-    # So we transform structured rows into descriptive "mini-documents".
+    required_cols = ["track_title", "artist_name", "album_title"]
 
+    # Remove missing core fields
+    songs = songs.dropna(subset=required_cols)
+
+    # Remove empty / whitespace / "nan" strings
+    for col in required_cols:
+        songs = songs[
+            songs[col].astype(str).str.strip() != ""
+        ]
+        songs = songs[
+            songs[col].astype(str).str.lower() != "nan"
+        ]
+
+    # Remove numeric-only junk titles ("2", "1", etc.)
+    songs = songs[
+        ~songs["track_title"].astype(str).str.fullmatch(r"\d+")
+    ]
+
+    # Remove very short corrupted titles
+    songs = songs[
+        songs["track_title"].astype(str).str.len() > 2
+    ]
+
+    # =========================================================
+    # STEP 1.2: GENRE NORMALIZATION (IMPORTANT FIX)
+    # =========================================================
+    # Ensures embeddings always receive a consistent string format
+    # Prevents list / NaN / mixed-type corruption
+
+    songs["genre_list"] = songs["genre_list"].fillna("Unknown")
+
+    songs["genre_list"] = songs["genre_list"].apply(
+        lambda x: ", ".join(x) if isinstance(x, list) else str(x)
+    )
+
+    # =========================================================
+    # STEP 2: CONVERT EACH SONG → SEMANTIC DOCUMENT
+    # =========================================================
     song_docs = []
 
     for _, row in songs.iterrows():
 
-        # Create a human-readable semantic representation of a song
-        # This helps embeddings capture relationships like:
-        # artist ↔ genre ↔ album ↔ track identity
+        # Structured semantic representation for embeddings
+        # This improves similarity grouping (artist + genre + album alignment)
 
         text = f"""
         Title: {row['track_title']}. 
         Performed by {row['artist_name']}. 
         Released under the album {row['album_title']}. 
-        Its genres include {row['genre_list']}.
+        Genres include: {row['genre_list']}. 
+        This is a music track used for semantic search and recommendation in a songs catalog.
         """
 
         # =========================================================
         # STEP 2.1: CLEAN WHITESPACE NOISE
         # =========================================================
-        # Removes:
-        # - newlines
-        # - multiple spaces
-        # - indentation artifacts from f-string formatting
-        #
-        # This ensures consistent tokenization for embeddings.
-
         text = " ".join(text.split())
 
-        # Wrap into LangChain Document format
-        song_docs.append(Document(page_content=text))
+        song_docs.append(
+            Document(page_content=text)
+        )
 
     print(f"✅ Prepared {len(song_docs)} song documents.")
 
     # =========================================================
     # STEP 3: INITIALIZE EMBEDDING MODEL
     # =========================================================
-    # Using a lightweight, high-performance transformer model
-    # suitable for semantic similarity tasks.
-
     embeddings = HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
@@ -88,30 +109,21 @@ def build_songs_index():
     # =========================================================
     # STEP 4: BUILD FAISS VECTOR INDEX
     # =========================================================
-    # FAISS converts embeddings into a fast similarity search index.
-    # This enables:
-    # - nearest-neighbor search
-    # - semantic retrieval
-    # - foundation for RAG systems
-
     vectorstore = FAISS.from_documents(song_docs, embeddings)
 
     # =========================================================
     # STEP 5: SAVE INDEX TO DISK
     # =========================================================
-    # Persist vector database so it can be reused without recomputation
-
     output_path = "../vectorstores/faiss_songs_index"
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
     vectorstore.save_local(output_path)
 
-    print(f"✅ Songs FAISS index built and saved at {output_path}")
+    print(f"🚀 Songs FAISS index built and saved at {output_path}")
 
 
 # =========================================================
 # ENTRY POINT
 # =========================================================
-# Allows script execution directly from terminal or notebook
-
 if __name__ == "__main__":
     build_songs_index()

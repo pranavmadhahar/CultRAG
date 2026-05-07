@@ -18,6 +18,7 @@ from langchain_core.prompts import ChatPromptTemplate
 # Embeddings + Vectorstore
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
+from langchain_core.output_parsers import JsonOutputParser
 from utils.paths import VECTORSTORES_DIR
 
 
@@ -38,10 +39,26 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 prompt_books = ChatPromptTemplate.from_template("""
 You are a book recommendation assistant using retrieval-augmented generation (RAG).
 
-Use ONLY the provided context to answer the question.
-If the answer is not in the context, say "Not found in the catalog."
+You are given:
+- Conversation history
+- Retrieved book context
+- A user question
 
-Conversation so far:
+Your task:
+Extract ONLY relevant book information from the context and return structured results.
+
+IMPORTANT RULES:
+Rules:
+- Always set domain = "books"
+- ONLY include BOOKS in your answer.
+- DO NOT include songs, movies, or any other media, even if present in the context.
+- Ignore any non-books entries in the context completely.
+- Do NOT add items that are not in the context.
+- Do NOT guess or hallucinate.
+- Do NOT mention other domains (songs, movies) or their absence.
+- Include a short summary after the table.
+
+Conversation History:
 {history}
 
 Context:
@@ -50,19 +67,26 @@ Context:
 Question:
 {question}
 
-Rules:
-- ONLY include BOOKS in your answer.
-- DO NOT include movies, songs, or any other media, even if present in the context.
-- Ignore any non-book entries in the context completely.
-- Do NOT add items that are not in the context.
-- Do NOT guess or hallucinate.
-- Do NOT mention other domains (movies, songs) or their absence.
-- Output a valid markdown table with headers.
-- Include a short summary after the table.
+OUTPUT FORMAT (STRICT JSON ONLY):
+{{
+  "domain": "movies",
+  "query_understanding": "brief interpretation of what user wants",
+  "results": [
+    {{
+      "title": "...",
+      "writer": "...",
+      "publication_year": "...",
+      "avg_rating": "...",
+      "reading_count": "...",
+      "genres": "..."
+    }}
+  ],
+  "summary": "short explanation of the results in 1-2 lines"
+}}
 
-Answer:
+FINAL RULE:
+Return ONLY valid JSON. No markdown, no tables, no extra text, no extra formatting.
 """)
-
 
 # Step 4: Helper to format retrieved docs into a single string
 def format_docs(docs):
@@ -73,6 +97,7 @@ def format_docs(docs):
     """
     return "\n\n".join([d.page_content for d in docs])
 
+parser = JsonOutputParser()
 
 # Step 5: Build the Core LCEL Retrieval Chain
 chain_books = (
@@ -83,4 +108,5 @@ chain_books = (
     }
     | prompt_books
     | llm
+    | parser
 )
