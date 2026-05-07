@@ -15,6 +15,7 @@ venv/
 
 # Raw datasets
 data/
+assets/data/
 
 
 # Vectorstores / FAISS indexes
