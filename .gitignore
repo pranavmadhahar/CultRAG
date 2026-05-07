@@ -1,16 +1,28 @@
+# Environment variables
 .env
+
+# Python cache
 __pycache__/
+*.pyc
+
+# Jupyter
 .ipynb_checkpoints/
+*.ipynb
 
-# Ignore datasets and indexes
+# Virtual environments
+myenv/
+venv/
+
+# Raw datasets
 data/
+
+
+# Vectorstores / FAISS indexes
+vectorstores/
+assets/vectorstores/
+
 *.faiss
 *.pkl
 
-# Ignore environment files
-.env
-
-data/
-*.faiss
-*.pkl
-.env
+# OS files
+.DS_Store
