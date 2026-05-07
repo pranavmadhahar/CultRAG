@@ -2,8 +2,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-DATA_DIR = PROJECT_ROOT / "data"
+ASSETS_DIR = PROJECT_ROOT / "assets"
 
-CLEANED_DATA_DIR = PROJECT_ROOT / "cleaned_data"
-
-VECTORSTORES_DIR = PROJECT_ROOT / "vectorstores"
+DATA_DIR = ASSETS_DIR / "data"
+CLEANED_DATA_DIR = ASSETS_DIR / "cleaned_data"
+VECTORSTORES_DIR = ASSETS_DIR / "vectorstores"

@@ -90,7 +90,7 @@ def normalize_input(x):
     if isinstance(x, list):
         return {
             "question": x[-1].content,
-            "history": "\n".join(m.content for m in x[:-1])
+            "history": "\n".join(str(m) for m in x[:-1])
         }
 
     return {
@@ -218,15 +218,34 @@ cult_chain = RunnableWithMessageHistory(
 # STEP 11: NARRATION LAYER (HUMAN RESPONSE BUILDER)
 # =========================================================
 narrator_prompt = ChatPromptTemplate.from_template("""
-You are a helpful assistant.
+You are the final presentation layer of a multi-domain RAG system.
 
-Convert structured JSON into a clean readable response.
+You receive structured JSON containing results from books, movies, and songs.
+
+TASK:
+Transform the JSON into a user-facing response.
 
 RULES:
-- Be concise
-- Use bullets or sections
-- Do NOT hallucinate
-- Use ONLY provided JSON
+- Preserve all factual information
+- DO NOT invent new facts
+- DO NOT remove domain-specific results
+- DO NOT repeat identical content unnecessarily
+- Keep each domain clearly separated (Books / Movies / Songs)
+- Use bulleted structure
+- Do not use extra formatting
+
+OPTIONAL SYNTHESIS:
+- If multiple domains are present, you MAY add 1–2 lines of cross-domain insight
+- Do NOT over-analyze or hallucinate connections
+
+FORMAT:
+- Use clear sections
+- Use bullets for results
+- Keep it concise but complete
+
+DO NOT add any concluding commentary or final insight outside the structured sections.
+The response must end after the last listed section.
+
 
 INPUT:
 {data}
