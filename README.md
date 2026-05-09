@@ -47,7 +47,7 @@ flowchart TD
     D -->|Books| E[BooksRAG]
     D -->|Movies| F[MoviesRAG]
     D -->|Songs| G[SongsRAG]
-    D -->|Fallback| H[General LLM]
+    D -->|Fallback| H[General LLM (fallback generation layer)]
 
     E --> I[Books FAISS Index]
     F --> J[Movies FAISS Index]
@@ -69,7 +69,7 @@ flowchart TD
 
 CultRAG is intentionally designed around a few core principles:
 
-* Keep retrieval deterministic
+* Prioritize deterministic retrieval
 * Minimize hallucinations using JSON-first outputs
 * Separate retrieval logic from narration logic
 * Use LLMs only where they add value
@@ -84,28 +84,33 @@ CultRAG is intentionally designed around a few core principles:
 CultRAG/
 │
 ├── assets/
-│   ├── data/               # Raw datasets
-│   ├── cleaned_data/       # Preprocessed datasets
-│   └── vectorstores/       # FAISS vector indexes
+│   ├── build/                    # Vectorstore build pipelines
+│   ├── data/                     # Raw datasets
+│   ├── cleaned_data/             # Preprocessed datasets
+│   └── vectorstores/             # FAISS vector indexes
 │
 ├── backend/
-│   └── main.py             # FastAPI backend
+│   └── main.py                  # FastAPI backend
 │
 ├── notebooks/
-│   └── CultRAG.ipynb       # Experimental notebook interface
+│   ├── BooksRAG.ipynb           # Books domain experiments
+│   ├── MoviesRAG.ipynb          # Movies domain experiments
+│   ├── SongsRAG.ipynb           # Songs domain experiments
+│   └── CultRAG.ipynb            # Unified orchestration notebook
 │
 ├── src/
-│   ├── chain_books.py
-│   ├── chain_movies.py
-│   ├── chain_songs.py
-│   ├── CultRAG.py
-│   └── utils/
+│   ├── chain_books.py           # Books RAG chain
+│   ├── chain_movies.py          # Movies RAG chain
+│   ├── chain_songs.py           # Songs RAG chain
+│   ├── CultRAG.py               # Main orchestration logic
+│   ├── __init__.py
+│   └── utils/                   # Helper utilities
 │
 ├── Dockerfile
-├── .dockerignore
 ├── requirements.txt
 ├── pyproject.toml
-└── README.md
+├── README.md
+└── Chat.ipynb                   # Chat.ipynb — Notebook-based interactive chat UI for CultRAG (RAG system interface)
 ```
 
 ---
@@ -221,6 +226,52 @@ OPENAI_API_KEY=your_openai_api_key
 ```
 
 ---
+
+
+# Build Vectorstores
+
+Before running the backend, build the FAISS indexes for each domain.
+These steps must be completed before running the backend server.
+
+These scripts:
+
+ - generate embeddings
+ - create FAISS vectorstores
+ - store indexes inside assets/vectorstores/
+
+Run Build Pipelines:
+
+```bash
+python assets/build/books_index_build.py
+python assets/build/movies_index_build.py
+python assets/build/songs_index_build.py
+```
+
+Output Structure
+
+After successful execution:
+
+```bash
+CultRAG/
+│
+├── assets/
+│   ├── build/                    # Vectorstore build pipelines
+│   ├── data/                     # Raw datasets
+│   ├── cleaned_data/             # Preprocessed datasets
+│   └── vectorstores/
+│       ├── faiss_books_index/
+│       ├── faiss_movies_index/
+│       └── faiss_songs_index/
+```
+
+**Note:**
+
+FAISS vectorstores are generated locally during the build step
+and are not committed to the repository.
+
+
+---
+
 
 # Running the Backend
 
@@ -354,4 +405,4 @@ The project combines:
 * Conversational interfaces
 * Containerized deployment
 
-into a single learning-focused but professionally structured AI system.
+into a modular, production-style AI system designed for learning and extensibility.
