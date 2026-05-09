@@ -47,7 +47,7 @@ flowchart TD
     D -->|Books| E[BooksRAG]
     D -->|Movies| F[MoviesRAG]
     D -->|Songs| G[SongsRAG]
-    D -->|Fallback| H[General LLM (fallback generation layer)]
+    D -->|Fallback| H[General LLM fallback layer]
 
     E --> I[Books FAISS Index]
     F --> J[Movies FAISS Index]
